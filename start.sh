@@ -249,6 +249,8 @@ else
     done
 fi
 
+./load_deps.sh
+
 # Start ComfyUI with custom arguments if provided
 cd $COMFYUI_DIR
 FIXED_ARGS="--listen 0.0.0.0 --port 8188"
