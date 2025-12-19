@@ -10,6 +10,8 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     comfy node install --exit-on-fail comfyui_ipadapter_plus@2.0.0
     comfy node install --exit-on-fail comfyui-base64-to-image@1.0.0
 
+    mkdir -p $COMFYUI_DIR/models/checkpoints $COMFYUI_DIR/models/loras $COMFYUI_DIR/models/ipadapter $COMFYUI_DIR/models/clip_vision
+
     CVT="8894b6af3f93a899ba9d2f268ddc45aa"
 
     curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
