@@ -6,34 +6,17 @@ FROM ubuntu:22.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install minimal dependencies needed for building
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    software-properties-common \
-    gpg-agent \
-    git \
-    wget \
-    curl \
-    ca-certificates \
-    && add-apt-repository ppa:deadsnakes/ppa && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    python3.12 \
-    python3.12-venv \
-    python3.12-dev \
-    build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends software-properties-common gpg-agent git wget curl ca-certificates \
+    && add-apt-repository ppa:deadsnakes/ppa && apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 python3.12-venv python3.12-dev build-essential \
     && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
     && dpkg -i cuda-keyring_1.1-1_all.deb \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends cuda-minimal-build-12-4 \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm cuda-keyring_1.1-1_all.deb
+    && apt-get update && apt-get install -y --no-install-recommends cuda-minimal-build-12-4 && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* && rm cuda-keyring_1.1-1_all.deb
 
 # Install pip for Python 3.12 and upgrade it
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python3.12 get-pip.py && \
-    python3.12 -m pip install --upgrade pip && \
-    rm get-pip.py
+    python3.12 get-pip.py && python3.12 -m pip install --upgrade pip && rm get-pip.py
 
 # Set CUDA environment for building
 ENV PATH=/usr/local/cuda/bin:${PATH}
@@ -55,7 +38,7 @@ RUN python3.12 -m pip install --no-cache-dir \
 
 WORKDIR /tmp/build/ComfyUI
 RUN python3.12 -m pip install --no-cache-dir -r requirements.txt && \
-    python3.12 -m pip install --no-cache-dir GitPython opencv-python
+    python3.12 -m pip install --no-cache-dir GitPython opencv-python "insightface==0.7.3" onnxruntime
 
 # Install custom node dependencies
 WORKDIR /tmp/build/ComfyUI/custom_nodes
@@ -77,36 +60,13 @@ ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
 ENV FILEBROWSER_CONFIG=/workspace/runpod-slim/.filebrowser.json
 
 # Update and install runtime dependencies, CUDA, and common tools
-RUN apt-get update && \
-    apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends \
-    software-properties-common \
-    gpg-agent \
-    && add-apt-repository ppa:deadsnakes/ppa && \
-    add-apt-repository ppa:cybermax-dexter/ffmpeg-nvenc && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-    git \
-    python3.12 \
-    python3.12-venv \
-    python3.12-dev \
-    build-essential \
-    wget \
-    gnupg \
-    xz-utils \
-    openssh-client \
-    openssh-server \
-    nano \
-    curl \
-    htop \
-    tmux \
-    ca-certificates \
-    less \
-    net-tools \
-    iputils-ping \
-    procps \
-    golang \
-    make \
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
+    software-properties-common gpg-agent \
+    && add-apt-repository ppa:deadsnakes/ppa && add-apt-repository ppa:cybermax-dexter/ffmpeg-nvenc && \
+    apt-get update && apt-get install -y --no-install-recommends \
+    git python3.12 python3.12-venv python3.12-dev build-essential wget gnupg xz-utils \
+    openssh-client openssh-server nano curl htop tmux \
+    ca-certificates less net-tools iputils-ping procps golang make \
     && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
     && dpkg -i cuda-keyring_1.1-1_all.deb \
     && apt-get update \
@@ -148,10 +108,13 @@ EXPOSE 8188 22 8888 8080
 
 # Copy and set up start script
 COPY start.sh /start.sh
+COPY load_deps.sh /load_deps.sh
 RUN chmod +x /start.sh
+RUN chmod +x /load_deps.sh
 
 # Set Python 3.12 as default
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
     update-alternatives --set python3 /usr/bin/python3.12
 
 ENTRYPOINT ["/start.sh"]
+
