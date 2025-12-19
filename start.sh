@@ -249,7 +249,9 @@ else
     done
 fi
 
-./load_deps.sh
+if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
+    ./load_deps.sh $COMFYUI_DIR
+fi
 
 # Start ComfyUI with custom arguments if provided
 cd $COMFYUI_DIR
