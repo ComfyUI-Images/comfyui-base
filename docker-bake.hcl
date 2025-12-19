@@ -2,6 +2,10 @@ variable "TAG" {
   default = "slim"
 }
 
+variable "PUBLISHER" {
+  default = "splugeola"
+}
+
 # Common settings for all targets
 target "common" {
   context = "."
@@ -16,8 +20,8 @@ target "regular" {
   inherits = ["common"]
   dockerfile = "Dockerfile"
   tags = [
-    "runpod/comfyui:${TAG}",
-    "runpod/comfyui:latest",
+    "${PUBLISHER}/comfyui:${TAG}",
+    "${PUBLISHER}/comfyui:latest",
   ]
 }
 
@@ -25,7 +29,7 @@ target "regular" {
 target "dev" {
   inherits = ["common"]
   dockerfile = "Dockerfile"
-  tags = ["runpod/comfyui:dev"]
+  tags = ["${PUBLISHER}/comfyui:dev"]
   output = ["type=docker"]
 }
 
@@ -33,13 +37,13 @@ target "dev" {
 target "devpush" {
   inherits = ["common"]
   dockerfile = "Dockerfile"
-  tags = ["runpod/comfyui:dev"]
+  tags = ["${PUBLISHER}/comfyui:dev"]
 }
 
 target "devpush5090" {
   inherits = ["common"]
   dockerfile = "Dockerfile.5090"
-  tags = ["runpod/comfyui:dev-5090"]
+  tags = ["${PUBLISHER}/comfyui:dev-5090"]
 }
 
 # RTX 5090 optimized image (CUDA 12.8 + latest PyTorch build)
@@ -50,7 +54,7 @@ target "rtx5090" {
     START_SCRIPT = "start.5090.sh"
   }
   tags = [
-    "runpod/comfyui:${TAG}-5090",
-    "runpod/comfyui:latest-5090",
+    "${PUBLISHER}/comfyui:${TAG}-5090",
+    "${PUBLISHER}/comfyui:latest-5090",
   ]
 }

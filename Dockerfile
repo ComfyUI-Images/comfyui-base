@@ -108,9 +108,9 @@ EXPOSE 8188 22 8888 8080
 
 # Copy and set up start script
 COPY start.sh /start.sh
-COPY load_deps.sh /load_deps.sh
+COPY load_deps.sh /workspace/runpod-slim/load_deps.sh
 RUN chmod +x /start.sh
-RUN chmod +x /load_deps.sh
+RUN chmod +x /workspace/runpod-slim/load_deps.sh
 
 # Set Python 3.12 as default
 RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
