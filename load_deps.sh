@@ -1,7 +1,9 @@
 #!/bin/bash
 
+COMFYUI_DIR=$1
+
 # Проверка на наличие флага установки
-if [ ! -f "/workspace/ComfyUI/custom_nodes/.custom_deps_installed" ]; then
+if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     echo "Installing custom dependencies and nodes..."
 
     # Установка custom nodes через ComfyUI-Manager
@@ -9,7 +11,7 @@ if [ ! -f "/workspace/ComfyUI/custom_nodes/.custom_deps_installed" ]; then
     comfy node install --exit-on-fail comfyui-base64-to-image@1.0.0
 
     # Создание флага, чтобы не повторять
-    touch /workspace/ComfyUI/custom_nodes/.custom_deps_installed
+    touch $COMFYUI_DIR/custom_nodes/.custom_deps_installed
 else
     echo "Custom dependencies already installed. Skipping..."
 fi
