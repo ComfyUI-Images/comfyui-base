@@ -3,6 +3,19 @@
 COMFYUI_DIR=$1
 cd $COMFYUI_DIR
 
+HFT="${HUGGINGFACE_TOKEN}"
+CVT="${CIVITAI_TOKEN}"
+
+if [ -z "$HFT" ]; then
+    echo "Error: HUGGINGFACE_TOKEN is not set. Set it as an environment variable."
+    exit 1
+fi
+
+if [ -z "$CVT" ]; then
+    echo "Error: CIVITAI_TOKEN is not set. Set it as an environment variable."
+    exit 1
+fi
+
 # Проверка на наличие флага установки
 if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     echo "Installing custom dependencies and nodes..."
@@ -16,9 +29,6 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     # comfy node show installed
 
     # mkdir -p $COMFYUI_DIR/models/checkpoints $COMFYUI_DIR/models/loras $COMFYUI_DIR/models/ipadapter $COMFYUI_DIR/models/clip_vision
-
-    CVT="8894b6af3f93a899ba9d2f268ddc45aa"
-    HFT="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"
 
     # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
     #     -o $COMFYUI_DIR/models/diffusion_models/z_image_turbo-Q4_K_S.gguf \
@@ -46,11 +56,10 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
         if [ -f "$file" ]; then
             new_name="${file%.zip}.safetensors"
             mv "$file" "$new_name"
-            echo "Переименован: $file -> $new_name"
+            echo "Renamed: $file -> $new_name"
         fi
     done
 
-    # Создание флага, чтобы не повторять
     touch $COMFYUI_DIR/custom_nodes/.custom_deps_installed
 else
     echo "Custom dependencies already installed. Skipping..."
