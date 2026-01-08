@@ -1,74 +1,54 @@
 #!/bin/bash
 
 COMFYUI_DIR=$1
+cd $COMFYUI_DIR
 
 # Проверка на наличие флага установки
 if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     echo "Installing custom dependencies and nodes..."
 
     # Установка custom nodes через ComfyUI-Manager
-    comfy node install --exit-on-fail comfyui_ipadapter_plus@2.0.0
-    comfy node install --exit-on-fail comfyui-base64-to-image@1.0.0
+    comfy --skip-prompt tracking disable
+    # comfy node install rgthree-comfy
+    # comfy node install comfyui_ultimatesdupscale
+    # comfy node install comfyui_essentials
+    # comfy node install ComfyUI_Base64Images
+    # comfy node show installed
 
-    mkdir -p $COMFYUI_DIR/models/checkpoints $COMFYUI_DIR/models/loras $COMFYUI_DIR/models/ipadapter $COMFYUI_DIR/models/clip_vision
+    # mkdir -p $COMFYUI_DIR/models/checkpoints $COMFYUI_DIR/models/loras $COMFYUI_DIR/models/ipadapter $COMFYUI_DIR/models/clip_vision
 
     CVT="8894b6af3f93a899ba9d2f268ddc45aa"
+    HFT="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"
 
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/checkpoints/pornmaster_proSDXLV7.safetensors \
-        "https://civitai.com/api/download/models/2043971?type=Model&format=SafeTensor&size=pruned&fp=fp16"
+    # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
+    #     -o $COMFYUI_DIR/models/diffusion_models/z_image_turbo-Q4_K_S.gguf \
+    #     "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K_S.gguf?download=true"
+    
+    # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
+    #     -o $COMFYUI_DIR/models/loras/Mystic-XXX-ZIT-v3.safetensors \
+    #     "https://civitai.com/api/download/models/2530056?type=Model&format=SafeTensor"
 
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/loras/Seductive_Expression_SDXL-000040.safetensors \
-        "https://civitai.com/api/download/models/2188184?type=Model&format=SafeTensor"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/loras/Seductive_Finger_Lips_Expression_SDXL-000046.safetensors \
-        "https://civitai.com/api/download/models/2277333?type=Model&format=SafeTensor"
-    
-    # === CLIP-VISION MODELS ===
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors \
-        "https://huggingface.co/h94/IP-Adapter/resolve/main/models/image_encoder/model.safetensors"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/clip_vision/CLIP-ViT-bigG-14-laion2B-39B-b160k.safetensors \
-        "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/image_encoder/model.safetensors"
-    
-    # === SDXL IPADAPTER MODELS ===
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/ipadapter/ip-adapter_sdxl_vit-h.safetensors \
-        "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter_sdxl_vit-h.safetensors"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/ipadapter/ip-adapter-plus_sdxl_vit-h.safetensors \
-        "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus_sdxl_vit-h.safetensors"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/ipadapter/ip-adapter-plus-face_sdxl_vit-h.safetensors \
-        "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/ipadapter/ip-adapter_sdxl.safetensors \
-        "https://huggingface.co/h94/IP-Adapter/resolve/main/sdxl_models/ip-adapter_sdxl.safetensors"
-    
-    # === FACEID PLUS V2 MODELS ===
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/ipadapter/ip-adapter-faceid-plusv2_sd15.bin \
-        "https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sd15.bin"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/ipadapter/ip-adapter-faceid-plusv2_sdxl.bin \
-        "https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl.bin"
+    # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
+    #     -o $COMFYUI_DIR/models/text_encoders/qwen_3_4b.safetensors \
+    #     "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors?download=true"
 
-    # === FACEID PLUS V2 LoRAs ===
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/loras/ip-adapter-faceid-plusv2_sd15_lora.safetensors \
-        "https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sd15_lora.safetensors"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o $COMFYUI_DIR/models/loras/ip-adapter-faceid-plusv2_sdxl_lora.safetensors \
-        "https://huggingface.co/h94/IP-Adapter-FaceID/resolve/main/ip-adapter-faceid-plusv2_sdxl_lora.safetensors"
+    # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
+    #     -o $COMFYUI_DIR/models/vae/flux_vae.safetensors \
+    #     "https://huggingface.co/StableDiffusionVN/Flux/resolve/main/Vae/flux_vae.safetensors?download=true"
+
+    TARGET_DIR="$COMFYUI_DIR/models/loras/chars"
+    mkdir -p "$TARGET_DIR"
+
+    git clone https://github.com/Asidert/FLM_C.git "$TARGET_DIR"
+    cd "$TARGET_DIR"
+
+    for file in *.zip; do
+        if [ -f "$file" ]; then
+            new_name="${file%.zip}.safetensors"
+            mv "$file" "$new_name"
+            echo "Переименован: $file -> $new_name"
+        fi
+    done
 
     # Создание флага, чтобы не повторять
     touch $COMFYUI_DIR/custom_nodes/.custom_deps_installed

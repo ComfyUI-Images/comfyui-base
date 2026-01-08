@@ -163,6 +163,10 @@ if [ ! -d "$COMFYUI_DIR" ] || [ ! -d "$VENV_DIR" ]; then
         "https://github.com/kijai/ComfyUI-KJNodes"
         "https://github.com/MoonGoblinDev/Civicomfy"
         "https://github.com/MadiatorLabs/ComfyUI-RunpodDirect"
+        "https://github.com/rgthree/rgthree-comfy"
+        "https://github.com/ssitu/ComfyUI_UltimateSDUpscale"
+        "https://github.com/cubiq/ComfyUI_essentials"
+        "https://github.com/Asidert/ComfyUI_Base64Images"
     )
 
     for repo in "${CUSTOM_NODES[@]}"; do
@@ -178,7 +182,7 @@ if [ ! -d "$COMFYUI_DIR" ] || [ ! -d "$VENV_DIR" ]; then
     if [ ! -d "$VENV_DIR" ]; then
         cd $COMFYUI_DIR
         # Create venv with access to system packages (torch, numpy, etc. pre-installed in image)
-        python3.12 -m venv --system-site-packages $VENV_DIR
+        python3.11 -m venv --system-site-packages $VENV_DIR
         source $VENV_DIR/bin/activate
 
         # Ensure pip is available in the venv (needed for ComfyUI-Manager)
@@ -250,6 +254,7 @@ else
 fi
 
 if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
+    cd /
     ./load_deps.sh $COMFYUI_DIR
 fi
 

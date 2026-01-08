@@ -8,15 +8,15 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install minimal dependencies needed for building
 RUN apt-get update && apt-get install -y --no-install-recommends software-properties-common gpg-agent git wget curl ca-certificates \
     && add-apt-repository ppa:deadsnakes/ppa && apt-get update && apt-get install -y --no-install-recommends \
-    python3.12 python3.12-venv python3.12-dev build-essential \
+    python3.11 python3.11-venv python3.11-dev build-essential \
     && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
     && dpkg -i cuda-keyring_1.1-1_all.deb \
-    && apt-get update && apt-get install -y --no-install-recommends cuda-minimal-build-12-4 && apt-get clean \
+    && apt-get update && apt-get install -y --no-install-recommends cuda-minimal-build-12-8 && apt-get clean \
     && rm -rf /var/lib/apt/lists/* && rm cuda-keyring_1.1-1_all.deb
 
-# Install pip for Python 3.12 and upgrade it
+# Install pip for Python 3.11 and upgrade it
 RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python3.12 get-pip.py && python3.12 -m pip install --upgrade pip && rm get-pip.py
+    python3.11 get-pip.py && python3.11 -m pip install --upgrade pip && rm get-pip.py
 
 # Set CUDA environment for building
 ENV PATH=/usr/local/cuda/bin:${PATH}
@@ -33,19 +33,19 @@ RUN git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
     git clone https://github.com/MoonGoblinDev/Civicomfy
 
 # Install PyTorch and all ComfyUI dependencies
-RUN python3.12 -m pip install --no-cache-dir \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+RUN python3.11 -m pip install --no-cache-dir \
+    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
 
 WORKDIR /tmp/build/ComfyUI
-RUN python3.12 -m pip install --no-cache-dir -r requirements.txt && \
-    python3.12 -m pip install --no-cache-dir GitPython opencv-python "insightface==0.7.3" onnxruntime
+RUN python3.11 -m pip install --no-cache-dir -r requirements.txt && \
+    python3.11 -m pip install --no-cache-dir GitPython opencv-python "insightface==0.7.3" onnxruntime comfy-cli
 
 # Install custom node dependencies
 WORKDIR /tmp/build/ComfyUI/custom_nodes
 RUN for node_dir in */; do \
         if [ -f "$node_dir/requirements.txt" ]; then \
             echo "Installing requirements for $node_dir"; \
-            python3.12 -m pip install --no-cache-dir -r "$node_dir/requirements.txt" || true; \
+            python3.11 -m pip install --no-cache-dir -r "$node_dir/requirements.txt" || true; \
         fi; \
     done
 
@@ -64,20 +64,20 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     software-properties-common gpg-agent \
     && add-apt-repository ppa:deadsnakes/ppa && add-apt-repository ppa:cybermax-dexter/ffmpeg-nvenc && \
     apt-get update && apt-get install -y --no-install-recommends \
-    git python3.12 python3.12-venv python3.12-dev build-essential wget gnupg xz-utils \
+    git python3.11 python3.11-venv python3.11-dev build-essential wget gnupg xz-utils \
     openssh-client openssh-server nano curl htop tmux \
     ca-certificates less net-tools iputils-ping procps golang make \
     && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
     && dpkg -i cuda-keyring_1.1-1_all.deb \
     && apt-get update \
-    && apt-get install -y --no-install-recommends cuda-minimal-build-12-4 \
+    && apt-get install -y --no-install-recommends cuda-minimal-build-12-8 \
     && apt-get install -y --no-install-recommends ffmpeg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* \
     && rm cuda-keyring_1.1-1_all.deb
 
 # Copy Python packages and pip executables from builder stage
-COPY --from=builder /usr/local/lib/python3.12 /usr/local/lib/python3.12
+COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Remove uv to force ComfyUI-Manager to use pip (uv doesn't respect --system-site-packages properly)
@@ -108,13 +108,13 @@ EXPOSE 8188 22 8888 8080
 
 # Copy and set up start script
 COPY start.sh /start.sh
-COPY load_deps.sh /workspace/runpod-slim/load_deps.sh
+COPY load_deps.sh /load_deps.sh
 RUN chmod +x /start.sh
-RUN chmod +x /workspace/runpod-slim/load_deps.sh
+RUN chmod +x /load_deps.sh
 
-# Set Python 3.12 as default
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    update-alternatives --set python3 /usr/bin/python3.12
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
+    update-alternatives --set python3 /usr/bin/python3.11
 
 ENTRYPOINT ["/start.sh"]
 
