@@ -164,6 +164,7 @@ if [ ! -d "$COMFYUI_DIR" ] || [ ! -d "$VENV_DIR" ]; then
         "https://github.com/MoonGoblinDev/Civicomfy"
         "https://github.com/MadiatorLabs/ComfyUI-RunpodDirect"
         "https://github.com/rgthree/rgthree-comfy"
+        "https://github.com/city96/ComfyUI-GGUF"
         "https://github.com/ssitu/ComfyUI_UltimateSDUpscale"
         "https://github.com/cubiq/ComfyUI_essentials"
         "https://github.com/Asidert/ComfyUI_Base64Images"
@@ -195,6 +196,8 @@ if [ ! -d "$COMFYUI_DIR" ] || [ ! -d "$VENV_DIR" ]; then
         # Install dependencies for all custom nodes
         cd "$COMFYUI_DIR/custom_nodes"
         for node_dir in */; do
+            cd "$COMFYUI_DIR/custom_nodes"
+            echo "node_dir: $node_dir"
             if [ -d "$node_dir" ]; then
                 echo "Checking dependencies for $node_dir..."
                 cd "$COMFYUI_DIR/custom_nodes/$node_dir"
