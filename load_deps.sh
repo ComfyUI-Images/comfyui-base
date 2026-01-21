@@ -19,24 +19,17 @@ fi
 # Проверка на наличие флага установки
 if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     echo "Installing custom dependencies and nodes..."
-
-    # Установка custom nodes через ComfyUI-Manager
     comfy --skip-prompt tracking disable
-    # comfy node install rgthree-comfy
-    # comfy node install comfyui_ultimatesdupscale
-    # comfy node install comfyui_essentials
-    # comfy node install ComfyUI_Base64Images
-    # comfy node show installed
 
     mkdir -p $COMFYUI_DIR/models/checkpoints $COMFYUI_DIR/models/loras $COMFYUI_DIR/models/loras/zit $COMFYUI_DIR/models/loras/chars $COMFYUI_DIR/models/ipadapter $COMFYUI_DIR/models/clip_vision
 
-    # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
-    #     -o $COMFYUI_DIR/models/diffusion_models/z_image_turbo-Q4_K_S.gguf \
-    #     "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K_S.gguf?download=true"
+    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
+        -o $COMFYUI_DIR/models/diffusion_models/z_image_turbo-Q4_K_S.gguf \
+        "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K_S.gguf?download=true"
 
     curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/diffusion_models/pornmasterZImage_turboV01.safetensors \
-        "https://civitai.com/api/download/models/2555568?type=Model&format=SafeTensor&size=pruned&fp=fp8"
+        -o $COMFYUI_DIR/models/diffusion_models/pornmasterZImage_v02Fp8.safetensors \
+        "https://civitai.com/api/download/models/2580802?type=Model&format=SafeTensor&size=pruned&fp=fp8"
     
     curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
         -o $COMFYUI_DIR/models/loras/zit/Mystic-XXX-ZIT-v3.safetensors \
@@ -49,29 +42,33 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
         -o $COMFYUI_DIR/models/vae/ae.safetensors \
         "https://huggingface.co/StableDiffusionVN/Flux/resolve/main/Vae/flux_vae.safetensors?download=true"
-
-    TARGET_DIR="$COMFYUI_DIR/models/loras/chars"
+    
+    TARGET_DIR="/comfyui/models/loras/chars"
+    CHARS_URL="https://elvale.ru/loras/chars/chars.txt"
+    TMP_FILE="/tmp/chars.txt"
+    
     mkdir -p "$TARGET_DIR"
-
-    CHARS=("zwc_001")
-    for char in "${CHARS[@]}"; do
+    echo "Fetching character list…"
+    curl -fsSL "$CHARS_URL" -o "$TMP_FILE"
+    
+    COUNT=0
+    while IFS= read -r char; do
+        # strip CR (Windows line endings)
+        char="$(printf '%s' "$char" | tr -d '\r')"
+        # skip empty lines
+        [ -z "$char" ] && continue
+        # skip comments
+        case "$char" in
+            \#*) continue ;;
+        esac
         echo "Downloading: $char.safetensors"
         curl --fail --retry 5 --retry-max-time 0 -C - -L \
-            -o "$COMFYUI_DIR/models/loras/chars/$char.safetensors" \
+            -o "$TARGET_DIR/$char.safetensors" \
             "https://elvale.ru/loras/chars/$char.safetensors"
-    done
-    echo "Downloaded all characters"
-
-    # git clone https://github.com/Asidert/FLM_C.git "$TARGET_DIR"
-    # cd "$TARGET_DIR"
-
-    # for file in *.zip; do
-    #     if [ -f "$file" ]; then
-    #         new_name="${file%.zip}.safetensors"
-    #         mv "$file" "$new_name"
-    #         echo "Renamed: $file -> $new_name"
-    #     fi
-    # done
+        COUNT=$((COUNT + 1))
+    done < "$TMP_FILE"
+    rm -f "$TMP_FILE"
+    echo "Downloaded $COUNT character LoRA(s)"
 
     touch $COMFYUI_DIR/custom_nodes/.custom_deps_installed
 else
