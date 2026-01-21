@@ -43,7 +43,7 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
         -o $COMFYUI_DIR/models/vae/ae.safetensors \
         "https://huggingface.co/StableDiffusionVN/Flux/resolve/main/Vae/flux_vae.safetensors?download=true"
     
-    TARGET_DIR="/comfyui/models/loras/chars"
+    TARGET_DIR="$COMFYUI_DIR/models/loras/chars"
     CHARS_URL="https://elvale.ru/loras/chars/chars.txt"
     TMP_FILE="/tmp/chars.txt"
     
