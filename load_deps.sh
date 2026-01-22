@@ -61,7 +61,7 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
         case "$char" in
             \#*) continue ;;
         esac
-        echo "Downloading: $char.safetensors"
+        echo "Downloading: $char.safetensors into $TARGET_DIR"
         curl --fail --retry 5 --retry-max-time 0 -C - -L \
             -o "$TARGET_DIR/$char.safetensors" \
             "https://elvale.ru/loras/chars/$char.safetensors"
