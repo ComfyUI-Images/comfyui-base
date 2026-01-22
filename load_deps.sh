@@ -23,26 +23,6 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
 
     mkdir -p $COMFYUI_DIR/models/checkpoints $COMFYUI_DIR/models/loras $COMFYUI_DIR/models/loras/zit $COMFYUI_DIR/models/loras/chars $COMFYUI_DIR/models/ipadapter $COMFYUI_DIR/models/clip_vision
 
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
-        -o $COMFYUI_DIR/models/diffusion_models/z_image_turbo-Q4_K_S.gguf \
-        "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K_S.gguf?download=true"
-
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/diffusion_models/pornmasterZImage_v02Fp8.safetensors \
-        "https://civitai.com/api/download/models/2580802?type=Model&format=SafeTensor&size=pruned&fp=fp8"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/loras/zit/Mystic-XXX-ZIT-v3.safetensors \
-        "https://civitai.com/api/download/models/2530056?type=Model&format=SafeTensor"
-
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
-        -o $COMFYUI_DIR/models/text_encoders/qwen_3_4b.safetensors \
-        "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors?download=true"
-
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
-        -o $COMFYUI_DIR/models/vae/ae.safetensors \
-        "https://huggingface.co/StableDiffusionVN/Flux/resolve/main/Vae/flux_vae.safetensors?download=true"
-    
     TARGET_DIR="$COMFYUI_DIR/models/loras/chars"
     CHARS_URL="https://elvale.ru/loras/chars/chars.txt"
     TMP_FILE="/tmp/chars.txt"
@@ -69,6 +49,26 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     done < "$TMP_FILE"
     rm -f "$TMP_FILE"
     echo "Downloaded $COUNT character LoRA(s)"
+
+    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
+        -o $COMFYUI_DIR/models/diffusion_models/z_image_turbo-Q4_K_S.gguf \
+        "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K_S.gguf?download=true"
+
+    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
+        -o $COMFYUI_DIR/models/diffusion_models/pornmasterZImage_v02Fp8.safetensors \
+        "https://civitai.com/api/download/models/2580802?type=Model&format=SafeTensor&size=pruned&fp=fp8"
+    
+    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
+        -o $COMFYUI_DIR/models/loras/zit/Mystic-XXX-ZIT-v3.safetensors \
+        "https://civitai.com/api/download/models/2530056?type=Model&format=SafeTensor"
+
+    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
+        -o $COMFYUI_DIR/models/text_encoders/qwen_3_4b.safetensors \
+        "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors?download=true"
+
+    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
+        -o $COMFYUI_DIR/models/vae/ae.safetensors \
+        "https://huggingface.co/StableDiffusionVN/Flux/resolve/main/Vae/flux_vae.safetensors?download=true"
 
     touch $COMFYUI_DIR/custom_nodes/.custom_deps_installed
 else
