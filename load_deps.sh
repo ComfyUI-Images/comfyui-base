@@ -52,7 +52,7 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     curl -fsSL "$CHARS_URL" -o "$TMP_FILE"
     
     COUNT=0
-    while IFS= read -r char; do
+    while IFS= read -r char || [ -n "$char" ]; do 
         # strip CR (Windows line endings)
         char="$(printf '%s' "$char" | tr -d '\r')"
         # skip empty lines
