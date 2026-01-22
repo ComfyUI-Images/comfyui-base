@@ -27,7 +27,6 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     CHARS_URL="https://elvale.ru/loras/chars/chars.txt"
     TMP_FILE="/tmp/chars.txt"
     
-    mkdir -p "$TARGET_DIR"
     echo "Fetching character list…"
     curl -fsSL "$CHARS_URL" -o "$TMP_FILE"
     
