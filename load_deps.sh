@@ -49,8 +49,6 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     rm -f "$TMP_FILE"
     echo "Downloaded $COUNT character LoRA(s)"
 
-    
-
     curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
         -o $COMFYUI_DIR/models/diffusion_models/z_image_turbo-Q4_K_S.gguf \
         "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K_S.gguf?download=true"
@@ -60,8 +58,8 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
         "https://civitai.com/api/download/models/2602723?type=Model&format=SafeTensor&size=full&fp=fp16"
     
     curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/loras/zit/Mystic-XXX-ZIT-v3.safetensors \
-        "https://civitai.com/api/download/models/2530056?type=Model&format=SafeTensor"
+        -o $COMFYUI_DIR/models/loras/zit/Mystic-XXX-ZIT-V5.safetensors \
+        "https://civitai.com/api/download/models/2581135?type=Model&format=SafeTensor"
 
     curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
         -o $COMFYUI_DIR/models/text_encoders/qwen_3_4b.safetensors \
