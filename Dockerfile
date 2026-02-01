@@ -38,7 +38,7 @@ RUN python3.11 -m pip install --no-cache-dir \
 
 WORKDIR /tmp/build/ComfyUI
 RUN python3.11 -m pip install --no-cache-dir -r requirements.txt && \
-    python3.11 -m pip install --no-cache-dir GitPython opencv-python "insightface==0.7.3" onnxruntime comfy-cli
+    python3.11 -m pip install --no-cache-dir GitPython opencv-python "insightface==0.7.3" onnxruntime comfy-cli comfy_aimdo
 
 # Install custom node dependencies
 WORKDIR /tmp/build/ComfyUI/custom_nodes
@@ -117,6 +117,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
     update-alternatives --set python3 /usr/bin/python3.11
 
 ENTRYPOINT ["/start.sh"]
+
 
 
 
