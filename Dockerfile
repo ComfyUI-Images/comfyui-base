@@ -3,6 +3,8 @@
 # ============================================================================
 FROM ubuntu:22.04 AS builder
 
+ARG COMFYUI_COMMIT=b0d9708974f50fce7d2448ac84e9260c87f7ade3
+
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install minimal dependencies needed for building
@@ -25,6 +27,8 @@ ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
 # Clone ComfyUI to get requirements
 WORKDIR /tmp/build
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git
+WORKDIR /tmp/build/ComfyUI
+RUN git checkout ${COMFYUI_COMMIT}
 
 # Clone custom nodes to get their requirements
 WORKDIR /tmp/build/ComfyUI/custom_nodes
@@ -117,6 +121,7 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
     update-alternatives --set python3 /usr/bin/python3.11
 
 ENTRYPOINT ["/start.sh"]
+
 
 
 
