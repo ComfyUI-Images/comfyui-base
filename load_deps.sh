@@ -54,7 +54,7 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     #     "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K_S.gguf?download=true"
 
     curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/diffusion_models/pornmasterZImage_v02Fp8.safetensors \
+        -o $COMFYUI_DIR/models/diffusion_models/pornmasterZImage_v1.safetensors \
         "https://civitai.com/api/download/models/2625016?type=Model&format=SafeTensor&size=pruned&fp=bf16"
 
     # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
