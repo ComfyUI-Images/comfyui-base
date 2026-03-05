@@ -24,7 +24,7 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     mkdir -p $COMFYUI_DIR/models/checkpoints $COMFYUI_DIR/models/loras $COMFYUI_DIR/models/loras/zit $COMFYUI_DIR/models/loras/chars $COMFYUI_DIR/models/ipadapter $COMFYUI_DIR/models/clip_vision
 
     TARGET_DIR="$COMFYUI_DIR/models/loras/chars"
-    CHARS_URL="https://flammaverse.com/loras/chars/chars.txt"
+    CHARS_URL="https://flammaverse.com/loras/chars.txt"
     TMP_FILE="/tmp/chars.txt"
     
     echo "Fetching character list…"
@@ -43,7 +43,7 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
         echo "Downloading: $char.safetensors into $TARGET_DIR"
         curl --fail --retry 5 --retry-max-time 0 -C - -L \
             -o "$TARGET_DIR/$char.safetensors" \
-            "https://flammaverse.com/loras/chars/$char.safetensors"
+            "https://flammaverse.com/loras/$char.safetensors"
         COUNT=$((COUNT + 1))
     done < "$TMP_FILE"
     rm -f "$TMP_FILE"
