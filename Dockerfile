@@ -1,129 +1,89 @@
-# ============================================================================
-# Stage 1: Builder - Clone ComfyUI and install all Python packages
-# ============================================================================
-FROM ubuntu:22.04 AS builder
-
-# ARG COMFYUI_COMMIT=b0d9708974f50fce7d2448ac84e9260c87f7ade3
-
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Install minimal dependencies needed for building
-RUN apt-get update && apt-get install -y --no-install-recommends software-properties-common gpg-agent git wget curl ca-certificates \
-    && add-apt-repository ppa:deadsnakes/ppa && apt-get update && apt-get install -y --no-install-recommends \
-    python3.11 python3.11-venv python3.11-dev build-essential \
-    && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
-    && dpkg -i cuda-keyring_1.1-1_all.deb \
-    && apt-get update && apt-get install -y --no-install-recommends cuda-minimal-build-12-8 && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* && rm cuda-keyring_1.1-1_all.deb
-
-# Install pip for Python 3.11 and upgrade it
-RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
-    python3.11 get-pip.py && python3.11 -m pip install --upgrade pip && rm get-pip.py
-
-# Set CUDA environment for building
-ENV PATH=/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
-
-# Clone ComfyUI to get requirements
-WORKDIR /tmp/build
-RUN git clone https://github.com/comfyanonymous/ComfyUI.git
-WORKDIR /tmp/build/ComfyUI
-# RUN git checkout ${COMFYUI_COMMIT}
-
-# Clone custom nodes to get their requirements
-WORKDIR /tmp/build/ComfyUI/custom_nodes
-RUN git clone https://github.com/ltdrdata/ComfyUI-Manager.git && \
-    git clone https://github.com/kijai/ComfyUI-KJNodes && \
-    git clone https://github.com/MoonGoblinDev/Civicomfy
-
-# Install PyTorch and all ComfyUI dependencies
-RUN python3.11 -m pip install --no-cache-dir \
-    torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-
-WORKDIR /tmp/build/ComfyUI
-RUN python3.11 -m pip install --no-cache-dir -r requirements.txt && \
-    python3.11 -m pip install --no-cache-dir GitPython opencv-python "insightface==0.7.3" onnxruntime comfy-cli comfy_aimdo
-
-# Install custom node dependencies
-WORKDIR /tmp/build/ComfyUI/custom_nodes
-RUN for node_dir in */; do \
-        if [ -f "$node_dir/requirements.txt" ]; then \
-            echo "Installing requirements for $node_dir"; \
-            python3.11 -m pip install --no-cache-dir -r "$node_dir/requirements.txt" || true; \
-        fi; \
-    done
-
-# ============================================================================
-# Stage 2: Runtime - Clean image with pre-installed packages
-# ============================================================================
-FROM ubuntu:22.04
+FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
-ENV IMAGEIO_FFMPEG_EXE=/usr/bin/ffmpeg
-ENV FILEBROWSER_CONFIG=/workspace/runpod-slim/.filebrowser.json
+ENV PIP_NO_CACHE_DIR=1
+ENV PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
-# Update and install runtime dependencies, CUDA, and common tools
-RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
-    software-properties-common gpg-agent \
-    && add-apt-repository ppa:deadsnakes/ppa && add-apt-repository ppa:cybermax-dexter/ffmpeg-nvenc && \
-    apt-get update && apt-get install -y --no-install-recommends \
-    git python3.11 python3.11-venv python3.11-dev build-essential wget gnupg xz-utils \
-    openssh-client openssh-server nano curl htop tmux \
-    ca-certificates less net-tools iputils-ping procps golang make \
-    && wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb \
-    && dpkg -i cuda-keyring_1.1-1_all.deb \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends cuda-minimal-build-12-8 \
-    && apt-get install -y --no-install-recommends ffmpeg \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm cuda-keyring_1.1-1_all.deb
+WORKDIR /workspace
 
-# Copy Python packages and pip executables from builder stage
-COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
-COPY --from=builder /usr/local/bin /usr/local/bin
+# ------------------------------------------------
+# System dependencies
+# ------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    git \
+    wget \
+    curl \
+    ffmpeg \
+    libgl1 \
+    libglib2.0-0 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
-# Remove uv to force ComfyUI-Manager to use pip (uv doesn't respect --system-site-packages properly)
-RUN pip uninstall -y uv 2>/dev/null || true && \
-    rm -f /usr/local/bin/uv /usr/local/bin/uvx
+RUN ln -sf /usr/bin/python3 /usr/bin/python
 
-# Install FileBrowser
-RUN curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
+# ------------------------------------------------
+# Python tooling
+# ------------------------------------------------
+RUN python -m pip install --upgrade pip setuptools wheel
 
-# Set CUDA environment variables
-ENV PATH=/usr/local/cuda/bin:${PATH}
-ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64
+# ------------------------------------------------
+# PyTorch (CUDA 12.8 compatible)
+# ------------------------------------------------
+RUN pip install torch torchvision torchaudio \
+    --index-url https://download.pytorch.org/whl/cu128
 
-# Install Jupyter with Python kernel
-RUN pip install jupyter
+# ------------------------------------------------
+# Clone ComfyUI and pin commit
+# ------------------------------------------------
+ARG COMFYUI_COMMIT=9b42d7e9e8c1f2a7c2a1e4e79cbb0df0c7c7d4fa
 
-# Configure SSH for root login
-RUN sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
-    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    mkdir -p /run/sshd
+RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI \
+    && cd /workspace/ComfyUI \
+    && git checkout ${COMFYUI_COMMIT}
 
-# Create workspace directory
-RUN mkdir -p /workspace/runpod-slim
-WORKDIR /workspace/runpod-slim
+WORKDIR /workspace/ComfyUI
 
-# Expose ports
-EXPOSE 8188 22 8888 8080
+# ------------------------------------------------
+# Install Python dependencies strictly from repo
+# ------------------------------------------------
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy and set up start script
+# ------------------------------------------------
+# Create standard model directories
+# ------------------------------------------------
+RUN mkdir -p \
+    /workspace/models/checkpoints \
+    /workspace/models/vae \
+    /workspace/models/loras \
+    /workspace/models/controlnet \
+    /workspace/models/upscale_models \
+    /workspace/models/clip \
+    /workspace/models/embeddings \
+    /workspace/models/diffusers
+
+# ------------------------------------------------
+# Copy startup scripts
+# ------------------------------------------------
+WORKDIR /workspace
+
 COPY start.sh /start.sh
 COPY load_deps.sh /load_deps.sh
-RUN chmod +x /start.sh
-RUN chmod +x /load_deps.sh
 
-# Set Python 3.11 as default
-RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 && \
-    update-alternatives --set python3 /usr/bin/python3.11
+RUN chmod +x /start.sh \
+ && chmod +x /load_deps.sh
 
-ENTRYPOINT ["/start.sh"]
+# ------------------------------------------------
+# Environment
+# ------------------------------------------------
+ENV CLI_ARGS="--listen 0.0.0.0 --port 8188"
 
+EXPOSE 8188
 
-
-
-
-
+# ------------------------------------------------
+# Start container
+# ------------------------------------------------
+CMD ["/start.sh"]
