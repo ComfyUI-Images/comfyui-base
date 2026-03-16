@@ -39,7 +39,7 @@ RUN pip install torch torchvision torchaudio \
 # ------------------------------------------------
 # Clone ComfyUI and pin commit
 # ------------------------------------------------
-ARG COMFYUI_COMMIT=9b42d7e9e8c1f2a7c2a1e4e79cbb0df0c7c7d4fa
+ARG COMFYUI_COMMIT=85fc35e8fa44c6174425acb4f9167792bcc903a8
 
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/ComfyUI \
     && cd /workspace/ComfyUI \
