@@ -124,13 +124,15 @@ setup_comfyui() {
             fi
         done
 
+        # Create virtual environment if not exists
         if [ ! -d "$VENV_DIR" ]; then
             cd $COMFYUI_DIR
             python3.11 -m venv --system-site-packages $VENV_DIR
             source $VENV_DIR/bin/activate
-            python -m ensurepip --upgrade
-            python -m pip install --upgrade pip
-
+        
+            # Обновляем pip/setuptools/wheel безопасно
+            pip install --upgrade pip setuptools wheel --no-cache-dir
+        
             cd "$COMFYUI_DIR/custom_nodes"
             for node_dir in */; do
                 if [ -d "$node_dir" ]; then
