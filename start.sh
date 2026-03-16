@@ -135,11 +135,29 @@ setup_comfyui() {
         
             cd "$COMFYUI_DIR/custom_nodes"
             for node_dir in */; do
+                cd "$COMFYUI_DIR/custom_nodes"
+                echo "node_dir: $node_dir"
                 if [ -d "$node_dir" ]; then
+                    echo "Checking dependencies for $node_dir..."
                     cd "$COMFYUI_DIR/custom_nodes/$node_dir"
-                    [ -f requirements.txt ] && pip install --no-cache-dir -r requirements.txt
-                    [ -f install.py ] && python install.py
-                    [ -f setup.py ] && pip install --no-cache-dir -e .
+                    
+                    # Check for requirements.txt
+                    if [ -f "requirements.txt" ]; then
+                        echo "Installing requirements.txt for $node_dir"
+                        pip install --no-cache-dir -r requirements.txt
+                    fi
+            
+                    # Check for install.py
+                    if [ -f "install.py" ]; then
+                        echo "Running install.py for $node_dir"
+                        python install.py
+                    fi
+            
+                    # Check for setup.py
+                    if [ -f "setup.py" ]; then
+                        echo "Running setup.py for $node_dir"
+                        pip install --no-cache-dir -e .
+                    fi
                 fi
             done
         fi
@@ -147,11 +165,29 @@ setup_comfyui() {
         source $VENV_DIR/bin/activate
         cd "$COMFYUI_DIR/custom_nodes"
         for node_dir in */; do
+            cd "$COMFYUI_DIR/custom_nodes"
+            echo "node_dir: $node_dir"
             if [ -d "$node_dir" ]; then
+                echo "Checking dependencies for $node_dir..."
                 cd "$COMFYUI_DIR/custom_nodes/$node_dir"
-                [ -f requirements.txt ] && pip install --no-cache-dir -r requirements.txt
-                [ -f install.py ] && python install.py
-                [ -f setup.py ] && pip install --no-cache-dir -e .
+                
+                # Check for requirements.txt
+                if [ -f "requirements.txt" ]; then
+                    echo "Installing requirements.txt for $node_dir"
+                    pip install --no-cache-dir -r requirements.txt
+                fi
+        
+                # Check for install.py
+                if [ -f "install.py" ]; then
+                    echo "Running install.py for $node_dir"
+                    python install.py
+                fi
+        
+                # Check for setup.py
+                if [ -f "setup.py" ]; then
+                    echo "Running setup.py for $node_dir"
+                    pip install --no-cache-dir -e .
+                fi
             fi
         done
     fi
