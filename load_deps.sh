@@ -40,7 +40,7 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
         echo "Downloading: $char.safetensors into $TARGET_DIR"
         curl --fail --retry 5 --retry-max-time 0 -C - -L \
             -o "$TARGET_DIR/$char.safetensors" \
-            "https://flammaverse.com/loras/chars/$char.safetensors"
+            "https://flammaverse.com/loras/$char.safetensors"
     
         COUNT=$((COUNT + 1))
     done < "$TMP_FILE"
