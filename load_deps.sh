@@ -48,29 +48,21 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     rm -f "$TMP_FILE"
     echo "Downloaded $COUNT character LoRA(s)"
 
-    # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
-    #     -o $COMFYUI_DIR/models/diffusion_models/z_image_turbo-Q4_K_S.gguf \
-    #     "https://huggingface.co/jayn7/Z-Image-Turbo-GGUF/resolve/main/z_image_turbo-Q4_K_S.gguf?download=true"
-
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/diffusion_models/pornmasterZImage_v1.safetensors \
-        "https://civitai.com/api/download/models/2625016?type=Model&format=SafeTensor&size=pruned&fp=bf16"
-
-    # curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-    #     -o $COMFYUI_DIR/models/diffusion_models/moodyPornMix_zitV6.safetensors \
-    #     "https://civitai.com/api/download/models/2602723?type=Model&format=SafeTensor&size=full&fp=fp16"
+    curl --fail --retry 5 --retry-max-time 0 -C - -L \
+        -o "$COMFYUI_DIR/models/diffusion_models/pornmasterZImage_v1.safetensors" \
+        "https://flammaverse.com/loras/models/diffusion_models/pornmasterZImage_v1.safetensors"
     
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${CVT}" \
-        -o $COMFYUI_DIR/models/loras/zit/Mystic-XXX-ZIT-V5.safetensors \
-        "https://civitai.com/api/download/models/2581135?type=Model&format=SafeTensor"
-
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
-        -o $COMFYUI_DIR/models/text_encoders/qwen_3_4b.safetensors \
-        "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/split_files/text_encoders/qwen_3_4b.safetensors?download=true"
-
-    curl --fail --retry 5 --retry-max-time 0 -C - -L -H "Authorization: Bearer ${HFT}" \
-        -o $COMFYUI_DIR/models/vae/ae.safetensors \
-        "https://huggingface.co/StableDiffusionVN/Flux/resolve/main/Vae/flux_vae.safetensors?download=true"
+    curl --fail --retry 5 --retry-max-time 0 -C - -L \
+        -o "$COMFYUI_DIR/models/loras/zit/Mystic-XXX-ZIT-V5.safetensors" \
+        "https://flammaverse.com/loras/models/loras/zit/Mystic-XXX-ZIT-V5.safetensors"
+    
+    curl --fail --retry 5 --retry-max-time 0 -C - -L \
+        -o "$COMFYUI_DIR/models/text_encoders/qwen_3_4b.safetensors" \
+        "https://flammaverse.com/loras/models/text_encoders/qwen_3_4b.safetensors"
+    
+    curl --fail --retry 5 --retry-max-time 0 -C - -L \
+        -o "$COMFYUI_DIR/models/vae/ae.safetensors" \
+        "https://flammaverse.com/loras/models/vae/ae.safetensors"
 
     touch $COMFYUI_DIR/custom_nodes/.custom_deps_installed
 else
