@@ -56,6 +56,20 @@ export_env_vars() {
 }
 
 # -----------------------------
+# System build dependencies
+# -----------------------------
+install_system_build_deps() {
+    echo "Installing system build dependencies..."
+    apt-get update
+
+    if ! apt-get install -y --no-install-recommends build-essential python3.11-dev; then
+        apt-get install -y --no-install-recommends build-essential python3-dev
+    fi
+
+    rm -rf /var/lib/apt/lists/*
+}
+
+# -----------------------------
 # Jupyter Lab
 # -----------------------------
 start_jupyter() {
@@ -217,5 +231,6 @@ setup_ssh
 export_env_vars
 start_filebrowser
 start_jupyter
+install_system_build_deps
 setup_comfyui
 start_comfyui
