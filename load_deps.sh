@@ -49,12 +49,8 @@ if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
     echo "Downloaded $COUNT character LoRA(s)"
 
     curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o "$COMFYUI_DIR/models/diffusion_models/pornmasterZImage_v1.safetensors" \
-        "https://flammaverse.com/loras/models/diffusion_models/pornmasterZImage_v1.safetensors"
-    
-    curl --fail --retry 5 --retry-max-time 0 -C - -L \
-        -o "$COMFYUI_DIR/models/loras/zit/Mystic-XXX-ZIT-V5.safetensors" \
-        "https://flammaverse.com/loras/models/loras/zit/Mystic-XXX-ZIT-V5.safetensors"
+        -o "$COMFYUI_DIR/models/diffusion_models/pornmasterZImage_turboV35Bf16.safetensors" \
+        "https://flammaverse.com/loras/models/diffusion_models/pornmasterZImage_turboV35Bf16.safetensors"
     
     curl --fail --retry 5 --retry-max-time 0 -C - -L \
         -o "$COMFYUI_DIR/models/text_encoders/qwen_3_4b.safetensors" \
