@@ -17,7 +17,7 @@ set -euo pipefail
 
 COMFYUI_DIR="${1:?usage: $0 /path/to/ComfyUI [role]}"
 WORKER_ROLE="${2:-image}"
-BASE_URL="${FLAMMA_BASE_URL:-https://flammaverse.com}"
+BASE_URL="${FLAMMA_BASE_URL:-https://dev.flammaverse.com}"
 
 echo "Fetching model list from $BASE_URL/worker_models/$WORKER_ROLE…"
 SYNC_JSON="$(curl -fsSL --retry 5 --retry-max-time 120 "$BASE_URL/worker_models/$WORKER_ROLE")"
