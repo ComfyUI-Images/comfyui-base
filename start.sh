@@ -128,6 +128,7 @@ setup_comfyui() {
             "https://github.com/ssitu/ComfyUI_UltimateSDUpscale"
             "https://github.com/cubiq/ComfyUI_essentials"
             "https://github.com/Asidert/ComfyUI_Base64Images"
+            "https://github.com/Asidert/ComfyUI_DataLoader"
         )
 
         for repo in "${CUSTOM_NODES[@]}"; do
