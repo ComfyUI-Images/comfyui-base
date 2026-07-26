@@ -112,6 +112,11 @@ start_comfyui() {
     # COMFYUI_EXTRA_ARGS — аварийный рычаг: аргументы можно докинуть через env
     # инстанса (VAST_WORKER_ENV), не пересобирая образ.
     echo "Starting ComfyUI: $FIXED_ARGS $CUSTOM_ARGS ${COMFYUI_EXTRA_ARGS:-}"
+    # Падение в нативном коде (segfault) не даёт питоновского трейсбека, а весь
+    # стек ComfyUI держится на скомпилированных пакетах — torch, comfy-kitchen,
+    # av. faulthandler печатает кадр, на котором процесс умер: без него в логе
+    # остаётся только "signal 11", по которому искать нечего.
+    export PYTHONFAULTHANDLER=1
 
     # Лог в файл + tail: строки готовности уезжают в логи Vast, по ним бэкенд
     # понимает, что ComfyUI поднялся.
