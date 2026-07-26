@@ -1,3 +1,11 @@
+# Образ GPU-пода (копия для repo ComfyUI-Images/comfyui-base, цель `regular`
+# в docker-bake.hcl -> splugeola/comfyui:latest). Собирается scripts/build_pod.sh.
+#
+# Отличия от прежней версии: выкинуты JupyterLab, FileBrowser и sshd — их запуск
+# убран из start.sh, а вес образа лежит на том же критическом пути, что и
+# загрузка моделей. Взамен добавлены build-essential и python3.11-dev: раньше их
+# ставил apt-get на каждом старте пода, теперь это build-time слой, нужный
+# кастом-нодам с C-расширениями (список нод редактируется из админки).
 FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -13,30 +21,24 @@ WORKDIR /workspace
 RUN apt-get update && apt-get install -y \
     python3.11 \
     python3.11-venv \
+    python3.11-dev \
     python3-pip \
+    build-essential \
     git \
     curl \
     wget \
     ffmpeg \
-    openssh-server \
-    openssl \
     libgl1 \
     libglib2.0-0 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN mkdir -p /var/run/sshd \
-    && ln -sf /usr/bin/python3.11 /usr/bin/python3
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python3
 
 # -----------------------------
 # Python tooling
 # -----------------------------
-RUN python3 -m pip install --upgrade pip setuptools wheel uv jupyterlab
-
-# -----------------------------
-# Install FileBrowser
-# -----------------------------
-RUN curl -fsSL https://raw.githubusercontent.com/filebrowser/get/master/get.sh | bash
+RUN python3 -m pip install --upgrade pip setuptools wheel uv
 
 # -----------------------------
 # PyTorch
@@ -62,20 +64,20 @@ WORKDIR /workspace/runpod-slim/ComfyUI
 # -----------------------------
 # Install ComfyUI dependencies
 # -----------------------------
+# Ставим в системный python: start.sh запускает ComfyUI им же, без venv.
 RUN pip install --no-cache-dir -r requirements.txt
 
 # -----------------------------
-# Copy start scripts
+# Copy start script
 # -----------------------------
 WORKDIR /workspace
 COPY start.sh /start.sh
-COPY load_deps.sh /load_deps.sh
 
-RUN chmod +x /start.sh /load_deps.sh
+RUN chmod +x /start.sh
 
 # -----------------------------
-# Ports for SSH, FileBrowser, Jupyter, ComfyUI
+# Port for ComfyUI
 # -----------------------------
-EXPOSE 22 8080 8188 8888
+EXPOSE 8188
 
 CMD ["/start.sh"]
