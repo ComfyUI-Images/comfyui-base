@@ -109,10 +109,33 @@ start_comfyui() {
     FIXED_ARGS="--listen 0.0.0.0 --port 8188"
     [ ! -f "$ARGS_FILE" ] && echo "# Custom ComfyUI arguments" > "$ARGS_FILE"
     CUSTOM_ARGS="$(grep -v '^#' "$ARGS_FILE" | tr '\n' ' ')"
-    # Лог в файл + tail на переднем плане: держит PID 1 и отдаёт строки готовности
-    # в логи Vast, по которым бэкенд понимает, что ComfyUI поднялся.
-    nohup python3 main.py $FIXED_ARGS $CUSTOM_ARGS &> "$LOG_FILE" &
-    tail -f "$LOG_FILE"
+    # COMFYUI_EXTRA_ARGS — аварийный рычаг: аргументы можно докинуть через env
+    # инстанса (VAST_WORKER_ENV), не пересобирая образ.
+    echo "Starting ComfyUI: $FIXED_ARGS $CUSTOM_ARGS ${COMFYUI_EXTRA_ARGS:-}"
+
+    # Лог в файл + tail: строки готовности уезжают в логи Vast, по ним бэкенд
+    # понимает, что ComfyUI поднялся.
+    python3 main.py $FIXED_ARGS $CUSTOM_ARGS ${COMFYUI_EXTRA_ARGS:-} &> "$LOG_FILE" &
+    comfy_pid=$!
+    tail -f "$LOG_FILE" &
+    tail_pid=$!
+
+    # Без этого умерший ComfyUI неотличим от медленного: tail -f молчал бы вечно,
+    # контейнер продолжал жить, а бэкенд ждал бы весь comfy_timeout. Дожидаемся
+    # процесса и выходим с его кодом — падение сразу видно в логах инстанса.
+    # `|| status=$?` обязателен: под `set -e` голый wait с ненулевым кодом убьёт
+    # скрипт прямо здесь, и диагностика ниже не напечатается.
+    status=0
+    wait "$comfy_pid" || status=$?
+    sleep 2
+    kill "$tail_pid" 2>/dev/null || true
+    if [ "$status" -gt 128 ]; then
+        # 137 = SIGKILL: почти всегда OOM-killer, трейсбека в логе не будет.
+        echo "ComfyUI killed by signal $((status - 128)) (status $status)" >&2
+    else
+        echo "ComfyUI exited with status $status" >&2
+    fi
+    exit "$status"
 }
 
 install_custom_nodes
