@@ -3,7 +3,7 @@
 #
 # Отличия от прежней версии: выкинуты JupyterLab, FileBrowser и sshd — их запуск
 # убран из start.sh, а вес образа лежит на том же критическом пути, что и
-# загрузка моделей. Взамен добавлены build-essential и python3.11-dev: раньше их
+# загрузка моделей. Взамен добавлены build-essential и python3.12-dev: раньше их
 # ставил apt-get на каждом старте пода, теперь это build-time слой, нужный
 # кастом-нодам с C-расширениями (список нод редактируется из админки).
 FROM nvidia/cuda:12.8.0-cudnn-runtime-ubuntu22.04
@@ -18,11 +18,18 @@ WORKDIR /workspace
 # -----------------------------
 # System dependencies
 # -----------------------------
-RUN apt-get update && apt-get install -y \
-    python3.11 \
-    python3.11-venv \
-    python3.11-dev \
-    python3-pip \
+# Python берём из deadsnakes, а не из ubuntu 22.04: тамошний python3.11 — это
+# релиз-кандидат (3.11.0rc1), на котором PyTorch падает по segfault в
+# TorchScript. Тот же приём уже используется в Dockerfile.5090.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    gpg-agent \
+    ca-certificates \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.12 \
+    python3.12-venv \
+    python3.12-dev \
     build-essential \
     git \
     curl \
@@ -30,10 +37,15 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     libgl1 \
     libglib2.0-0 \
-    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN ln -sf /usr/bin/python3.11 /usr/bin/python3
+# python3-pip из ubuntu тянет за собой python3.10 — ставим pip прямо для 3.12.
+RUN curl -sS https://bootstrap.pypa.io/get-pip.py -o /tmp/get-pip.py \
+    && python3.12 /tmp/get-pip.py \
+    && rm /tmp/get-pip.py
+
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 \
+    && update-alternatives --set python3 /usr/bin/python3.12
 
 # -----------------------------
 # Python tooling
@@ -43,7 +55,7 @@ RUN python3 -m pip install --upgrade pip setuptools wheel uv
 # -----------------------------
 # PyTorch
 # -----------------------------
-RUN pip install torch torchvision torchaudio \
+RUN python3 -m pip install torch torchvision torchaudio \
     --index-url https://download.pytorch.org/whl/cu128
 
 # -----------------------------
@@ -65,7 +77,7 @@ WORKDIR /workspace/runpod-slim/ComfyUI
 # Install ComfyUI dependencies
 # -----------------------------
 # Ставим в системный python: start.sh запускает ComfyUI им же, без venv.
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
 # -----------------------------
 # Copy start script
