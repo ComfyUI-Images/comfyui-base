@@ -1,237 +1,119 @@
 #!/bin/bash
+# Точка входа GPU-пода (копия для repo ComfyUI-Images/comfyui-base, образ
+# splugeola/comfyui:latest). Собирается через scripts/build_pod.sh.
+#
+# Задача скрипта — поднять ComfyUI как можно быстрее, потому что за время старта
+# мы уже платим за арендованную GPU. Поэтому здесь нет ни FileBrowser, ни Jupyter,
+# ни sshd, ни apt-get: всё, что можно, запечено в образ.
+#
+# Модели скрипт НЕ качает. Раньше это делал load_deps.sh до старта ComfyUI, и
+# бэкенд не видел ни прогресса, ни прогноза — только таймаут. Теперь ComfyUI
+# стартует пустым, а модели тянет нода ComfyUI_DataLoader воркфлоу, который шлёт
+# бэкенд; она же по WS отдаёт скорость и ETA, по которым медленный под гасится.
+#
+# Список кастом-нод тоже не захардкожен: он приходит с бэкенда
+# (GET /worker_nodes/<role>, редактируется в админке «Лоры и модели» →
+# «Кастом-ноды воркера»). Встроенный список ниже — только фоллбек, чтобы сбой
+# бэкенда не оставил под без нод, без которых воркфлоу не соберётся.
 set -e
 
 COMFYUI_DIR="/workspace/runpod-slim/ComfyUI"
-VENV_DIR="$COMFYUI_DIR/.venv"
 ARGS_FILE="/workspace/runpod-slim/comfyui_args.txt"
-FILEBROWSER_DB="/workspace/runpod-slim/filebrowser.db"
+LOG_FILE="/workspace/runpod-slim/comfyui.log"
+BASE_URL="${FLAMMA_BASE_URL:-https://flammaverse.com}"
+WORKER_ROLE="${WORKER_ROLE:-image}"
+
+FALLBACK_NODES=(
+    "https://github.com/Asidert/ComfyUI_Base64Images	main"
+    "https://github.com/Asidert/ComfyUI_DataLoader	main"
+)
 
 # -----------------------------
-# SSH Setup
+# Кастом-ноды
 # -----------------------------
-setup_ssh() {
-    mkdir -p ~/.ssh
-    for type in rsa dsa ecdsa ed25519; do
-        if [ ! -f "/etc/ssh/ssh_host_${type}_key" ]; then
-            ssh-keygen -t $type -f "/etc/ssh/ssh_host_${type}_key" -N '' -q
-        fi
-    done
-    if [[ $PUBLIC_KEY ]]; then
-        echo "$PUBLIC_KEY" >> ~/.ssh/authorized_keys
-        chmod 700 -R ~/.ssh
+fetch_node_manifest() {
+    local json
+    if ! json="$(curl -fsSL --retry 5 --retry-max-time 60 "$BASE_URL/worker_nodes/$WORKER_ROLE")"; then
+        echo "WARNING: node manifest unavailable at $BASE_URL/worker_nodes/$WORKER_ROLE, using fallback list" >&2
+        printf '%s\n' "${FALLBACK_NODES[@]}"
+        return 0
+    fi
+    if ! printf '%s' "$json" | python3 -c '
+import json, sys
+try:
+    nodes = json.load(sys.stdin).get("nodes") or []
+except Exception:
+    raise SystemExit(1)
+rows = [
+    (repo, str(node.get("ref") or "main").strip() or "main")
+    for node in nodes
+    for repo in [str(node.get("repo") or "").strip()]
+    if repo.startswith("https://github.com/")
+]
+if not rows:
+    raise SystemExit(1)
+for repo, ref in rows:
+    print(repo, ref, sep="\t")
+'; then
+        echo "WARNING: node manifest is empty or malformed, using fallback list" >&2
+        printf '%s\n' "${FALLBACK_NODES[@]}"
+    fi
+}
+
+install_node() {
+    local repo="$1" ref="$2" name dir
+    name="$(basename "$repo" .git)"
+    dir="$COMFYUI_DIR/custom_nodes/$name"
+
+    # Репозитории свои и крошечные, поэтому подтягиваем их на каждом старте:
+    # правка ноды доезжает до подов без пересборки образа.
+    if [ -d "$dir/.git" ]; then
+        echo "Updating $name ($ref)..."
+        git -C "$dir" fetch --depth 1 origin "$ref"
+        git -C "$dir" reset --hard FETCH_HEAD
     else
-        RANDOM_PASS=$(openssl rand -base64 12)
-        echo "root:$RANDOM_PASS" | chpasswd
-        echo "Generated random SSH password for root: $RANDOM_PASS"
-    fi
-    echo "PermitUserEnvironment yes" >> /etc/ssh/sshd_config
-    /usr/sbin/sshd
-}
-
-# -----------------------------
-# Environment Variables
-# -----------------------------
-export_env_vars() {
-    ENV_FILE="/etc/environment"
-    PAM_ENV_FILE="/etc/security/pam_env.conf"
-    SSH_ENV="/root/.ssh/environment"
-    cp "$ENV_FILE" "${ENV_FILE}.bak" 2>/dev/null || true
-    cp "$PAM_ENV_FILE" "${PAM_ENV_FILE}.bak" 2>/dev/null || true
-    > "$ENV_FILE"
-    > "$PAM_ENV_FILE"
-    mkdir -p /root/.ssh
-    > "$SSH_ENV"
-    printenv | grep -E '^RUNPOD_|^PATH=|^CUDA|^LD_LIBRARY_PATH|^PYTHONPATH' | while read -r line; do
-        name=$(echo "$line" | cut -d= -f1)
-        value=$(echo "$line" | cut -d= -f2-)
-        echo "$name=\"$value\"" >> "$ENV_FILE"
-        echo "$name DEFAULT=\"$value\"" >> "$PAM_ENV_FILE"
-        echo "$name=\"$value\"" >> "$SSH_ENV"
-        echo "export $name=\"$value\"" >> /etc/rp_environment
-    done
-    echo 'source /etc/rp_environment' >> ~/.bashrc
-    echo 'source /etc/rp_environment' >> /etc/bash.bashrc
-    chmod 644 "$ENV_FILE" "$PAM_ENV_FILE"
-    chmod 600 "$SSH_ENV"
-}
-
-# -----------------------------
-# System build dependencies
-# -----------------------------
-install_system_build_deps() {
-    echo "Installing system build dependencies..."
-    apt-get update
-
-    if ! apt-get install -y --no-install-recommends build-essential python3.11-dev; then
-        apt-get install -y --no-install-recommends build-essential python3-dev
+        echo "Cloning $name ($ref)..."
+        rm -rf "$dir"
+        git clone --depth 1 --branch "$ref" "$repo" "$dir"
     fi
 
-    rm -rf /var/lib/apt/lists/*
-}
-
-# -----------------------------
-# Jupyter Lab
-# -----------------------------
-start_jupyter() {
-    mkdir -p /workspace
-    nohup jupyter lab \
-        --allow-root \
-        --no-browser \
-        --port=8888 \
-        --ip=0.0.0.0 \
-        --FileContentsManager.preferred_dir=/workspace \
-        --ServerApp.root_dir=/workspace \
-        --ServerApp.terminado_settings='{"shell_command":["/bin/bash"]}' \
-        --IdentityProvider.token="${JUPYTER_PASSWORD:-}" \
-        &> /jupyter.log &
-}
-
-# -----------------------------
-# FileBrowser
-# -----------------------------
-start_filebrowser() {
-    if [ ! -f "$FILEBROWSER_DB" ]; then
-        filebrowser config init
-        filebrowser config set --address 0.0.0.0
-        filebrowser config set --port 8080
-        filebrowser config set --root /workspace
-        filebrowser config set --auth.method=json
-        filebrowser users add admin adminadmin12 --perm.admin
+    if [ -f "$dir/requirements.txt" ]; then
+        python3 -m pip install --no-cache-dir -r "$dir/requirements.txt"
     fi
-    nohup filebrowser &> /filebrowser.log &
-}
-
-# -----------------------------
-# ComfyUI Setup + Custom Nodes
-# -----------------------------
-setup_comfyui() {
-    if [ ! -d "$COMFYUI_DIR" ] || [ ! -d "$VENV_DIR" ]; then
-        echo "First time setup: Installing ComfyUI and dependencies..."
-
-        if [ ! -d "$COMFYUI_DIR" ]; then
-            cd /workspace/runpod-slim
-            git clone https://github.com/comfyanonymous/ComfyUI.git
-        fi
-
-        if [ ! -d "$COMFYUI_DIR/custom_nodes/ComfyUI-Manager" ]; then
-            mkdir -p "$COMFYUI_DIR/custom_nodes"
-            cd "$COMFYUI_DIR/custom_nodes"
-            git clone https://github.com/ltdrdata/ComfyUI-Manager.git
-        fi
-
-        CUSTOM_NODES=(
-            "https://github.com/kijai/ComfyUI-KJNodes"
-            "https://github.com/MoonGoblinDev/Civicomfy"
-            "https://github.com/MadiatorLabs/ComfyUI-RunpodDirect"
-            "https://github.com/rgthree/rgthree-comfy"
-            "https://github.com/city96/ComfyUI-GGUF"
-            "https://github.com/ssitu/ComfyUI_UltimateSDUpscale"
-            "https://github.com/cubiq/ComfyUI_essentials"
-            "https://github.com/Asidert/ComfyUI_Base64Images"
-            "https://github.com/Asidert/ComfyUI_DataLoader"
-        )
-
-        for repo in "${CUSTOM_NODES[@]}"; do
-            repo_name=$(basename "$repo")
-            if [ ! -d "$COMFYUI_DIR/custom_nodes/$repo_name" ]; then
-                cd "$COMFYUI_DIR/custom_nodes"
-                git clone "$repo"
-            fi
-        done
-
-        # Create virtual environment if not exists
-        if [ ! -d "$VENV_DIR" ]; then
-            cd $COMFYUI_DIR
-            python3.11 -m venv --system-site-packages $VENV_DIR
-            source $VENV_DIR/bin/activate
-        
-            # Обновляем pip/setuptools/wheel безопасно
-            pip install --upgrade pip setuptools wheel --no-cache-dir
-        
-            cd "$COMFYUI_DIR/custom_nodes"
-            for node_dir in */; do
-                cd "$COMFYUI_DIR/custom_nodes"
-                echo "node_dir: $node_dir"
-                if [ -d "$node_dir" ]; then
-                    echo "Checking dependencies for $node_dir..."
-                    cd "$COMFYUI_DIR/custom_nodes/$node_dir"
-                    
-                    # Check for requirements.txt
-                    if [ -f "requirements.txt" ]; then
-                        echo "Installing requirements.txt for $node_dir"
-                        pip install --no-cache-dir -r requirements.txt
-                    fi
-            
-                    # Check for install.py
-                    if [ -f "install.py" ]; then
-                        echo "Running install.py for $node_dir"
-                        python install.py
-                    fi
-            
-                    # Check for setup.py
-                    if [ -f "setup.py" ]; then
-                        echo "Running setup.py for $node_dir"
-                        pip install --no-cache-dir -e .
-                    fi
-                fi
-            done
-        fi
-    else
-        source $VENV_DIR/bin/activate
-        cd "$COMFYUI_DIR/custom_nodes"
-        for node_dir in */; do
-            cd "$COMFYUI_DIR/custom_nodes"
-            echo "node_dir: $node_dir"
-            if [ -d "$node_dir" ]; then
-                echo "Checking dependencies for $node_dir..."
-                cd "$COMFYUI_DIR/custom_nodes/$node_dir"
-                
-                # Check for requirements.txt
-                if [ -f "requirements.txt" ]; then
-                    echo "Installing requirements.txt for $node_dir"
-                    pip install --no-cache-dir -r requirements.txt
-                fi
-        
-                # Check for install.py
-                if [ -f "install.py" ]; then
-                    echo "Running install.py for $node_dir"
-                    python install.py
-                fi
-        
-                # Check for setup.py
-                if [ -f "setup.py" ]; then
-                    echo "Running setup.py for $node_dir"
-                    pip install --no-cache-dir -e .
-                fi
-            fi
-        done
+    if [ -f "$dir/install.py" ]; then
+        (cd "$dir" && python3 install.py)
     fi
-
-    if [ ! -f "$COMFYUI_DIR/custom_nodes/.custom_deps_installed" ]; then
-        cd /
-        ./load_deps.sh "$COMFYUI_DIR"
+    if [ -f "$dir/setup.py" ]; then
+        python3 -m pip install --no-cache-dir -e "$dir"
     fi
 }
 
+install_custom_nodes() {
+    mkdir -p "$COMFYUI_DIR/custom_nodes"
+
+    while IFS=$'\t' read -r repo ref; do
+        [ -z "$repo" ] && continue
+        # Сбой одной ноды не должен мешать ComfyUI подняться: бэкенд всё равно
+        # забракует под на синке моделей или на warmup — и сделает это быстрее,
+        # чем истечёт таймаут ожидания ответа от так и не стартовавшего ComfyUI.
+        install_node "$repo" "$ref" \
+            || echo "WARNING: failed to install custom node $repo ($ref)" >&2
+    done < <(fetch_node_manifest)
+}
+
 # -----------------------------
-# Start ComfyUI
+# ComfyUI
 # -----------------------------
 start_comfyui() {
     cd "$COMFYUI_DIR"
     FIXED_ARGS="--listen 0.0.0.0 --port 8188"
     [ ! -f "$ARGS_FILE" ] && echo "# Custom ComfyUI arguments" > "$ARGS_FILE"
-    CUSTOM_ARGS=$(grep -v '^#' "$ARGS_FILE" | tr '\n' ' ')
-    nohup python main.py $FIXED_ARGS $CUSTOM_ARGS &> /workspace/runpod-slim/comfyui.log &
-    tail -f /workspace/runpod-slim/comfyui.log
+    CUSTOM_ARGS="$(grep -v '^#' "$ARGS_FILE" | tr '\n' ' ')"
+    # Лог в файл + tail на переднем плане: держит PID 1 и отдаёт строки готовности
+    # в логи Vast, по которым бэкенд понимает, что ComfyUI поднялся.
+    nohup python3 main.py $FIXED_ARGS $CUSTOM_ARGS &> "$LOG_FILE" &
+    tail -f "$LOG_FILE"
 }
 
-# -----------------------------
-# Main
-# -----------------------------
-setup_ssh
-export_env_vars
-start_filebrowser
-start_jupyter
-install_system_build_deps
-setup_comfyui
+install_custom_nodes
 start_comfyui
