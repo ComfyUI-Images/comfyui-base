@@ -79,6 +79,12 @@ WORKDIR /workspace/runpod-slim/ComfyUI
 # Ставим в системный python: start.sh запускает ComfyUI им же, без venv.
 RUN python3 -m pip install --no-cache-dir -r requirements.txt
 
+# ComfyUI_Base64Images импортирует cv2 на уровне модуля (нужен только классу
+# LoadImageFromBase64), но requirements.txt у ноды нет — раньше opencv приезжал
+# транзитом из KJNodes, которые мы убрали. headless-сборка: GUI-функции на
+# сервере не нужны, а весит вдвое меньше.
+RUN python3 -m pip install --no-cache-dir opencv-python-headless
+
 # -----------------------------
 # Copy start script
 # -----------------------------
