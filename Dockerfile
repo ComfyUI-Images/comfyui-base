@@ -66,7 +66,13 @@ RUN mkdir -p /workspace/runpod-slim
 # -----------------------------
 # Clone ComfyUI (fixed tag)
 # -----------------------------
-ARG COMFYUI_VERSION=85fc35e8fa44c6174425acb4f9167792bcc903a8
+# v0.29.0 (2026-07-28). Подняли с 0.12.x ради LTX 2.3: воркфлоу видео требует
+# LTXAVTextEncoderLoader (0.14.1), LTXVCropGuides (0.16.4), LTXVConcatAVLatent и
+# LTXVSeparateAVLatent (0.17.2) — в прежнем пине этих нод просто нет.
+# Пин остаётся коммитом, а не тегом: тег можно передвинуть, ветка уедет сама, а
+# ловить сломанное обновление пришлось бы на уже оплаченной GPU. Откат при
+# регрессе: v0.28.0 = 700821e1364eaab0e8f21c538a2131719fec57bf.
+ARG COMFYUI_VERSION=a8c44f9b2a0678ac4082e3529a3f43db7472acfe
 RUN git clone https://github.com/comfyanonymous/ComfyUI.git /workspace/runpod-slim/ComfyUI \
     && cd /workspace/runpod-slim/ComfyUI \
     && git checkout ${COMFYUI_VERSION}
