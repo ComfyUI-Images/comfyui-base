@@ -15,6 +15,9 @@
 # (GET /worker_nodes/<role>, редактируется в админке «Лоры и модели» →
 # «Кастом-ноды воркера»). Встроенный список ниже — только фоллбек, чтобы сбой
 # бэкенда не оставил под без нод, без которых воркфлоу не соберётся.
+#
+# Образ один на обе роли: WORKER_ROLE переключает и манифест нод, и фоллбек.
+# Ничего роле-специфичного в Dockerfile нет, вся развилка здесь.
 set -e
 
 COMFYUI_DIR="/workspace/runpod-slim/ComfyUI"
@@ -23,10 +26,42 @@ LOG_FILE="/workspace/runpod-slim/comfyui.log"
 BASE_URL="${FLAMMA_BASE_URL:-https://flammaverse.com}"
 WORKER_ROLE="${WORKER_ROLE:-image}"
 
-FALLBACK_NODES=(
+# Фоллбек-наборы нод по ролям. Набор должен быть самодостаточным: воркфлоу своей
+# роли обязан собраться на одном фоллбеке, без бэкенда. Для video это в первую
+# очередь LTXSequencer — без него нет ни закольцовки, ни привязки кадров.
+#
+# Свои ноды держим на main осознанно: install_node подтягивает их на каждом
+# старте, поэтому правка доезжает до подов без пересборки образа. Чужие пиним
+# коммитом — иначе сломанное обновление приедет на под само.
+FALLBACK_NODES_image=(
     "https://github.com/Asidert/ComfyUI_Base64Images	main"
     "https://github.com/Asidert/ComfyUI_DataLoader	main"
 )
+FALLBACK_NODES_video=(
+    "https://github.com/Asidert/ComfyUI_Base64Images	main"
+    "https://github.com/Asidert/ComfyUI_DataLoader	main"
+    "https://github.com/WhatDreamsCost/WhatDreamsCost-ComfyUI	fbf22afdfce99587c80c4e8625f545deaa6c66a0"
+    "https://github.com/kijai/ComfyUI-KJNodes	827fe6ee0ed7348d8daa988ed852bedf1272380c"
+)
+
+# Опечатка в роли не должна поднимать под молча: на дефолтном наборе видео-под
+# зарегистрируется как рабочий и начнёт брать задачи, которые не умеет считать.
+case "$WORKER_ROLE" in
+    image|video) ;;
+    *)
+        echo "FATAL: unknown WORKER_ROLE '$WORKER_ROLE' (expected image|video)" >&2
+        exit 1
+        ;;
+esac
+
+# Без nameref (`local -n`): он требует bash >= 4.3, а скрипт хочется гонять и на
+# машине разработчика, где /bin/bash может быть 3.2.
+fallback_nodes() {
+    case "$WORKER_ROLE" in
+        video) printf '%s\n' "${FALLBACK_NODES_video[@]}" ;;
+        *)     printf '%s\n' "${FALLBACK_NODES_image[@]}" ;;
+    esac
+}
 
 # -----------------------------
 # Кастом-ноды
@@ -35,7 +70,7 @@ fetch_node_manifest() {
     local json
     if ! json="$(curl -fsSL --retry 5 --retry-max-time 60 "$BASE_URL/worker_nodes/$WORKER_ROLE")"; then
         echo "WARNING: node manifest unavailable at $BASE_URL/worker_nodes/$WORKER_ROLE, using fallback list" >&2
-        printf '%s\n' "${FALLBACK_NODES[@]}"
+        fallback_nodes
         return 0
     fi
     if ! printf '%s' "$json" | python3 -c '
@@ -56,7 +91,7 @@ for repo, ref in rows:
     print(repo, ref, sep="\t")
 '; then
         echo "WARNING: node manifest is empty or malformed, using fallback list" >&2
-        printf '%s\n' "${FALLBACK_NODES[@]}"
+        fallback_nodes
     fi
 }
 
@@ -65,17 +100,22 @@ install_node() {
     name="$(basename "$repo" .git)"
     dir="$COMFYUI_DIR/custom_nodes/$name"
 
-    # Репозитории свои и крошечные, поэтому подтягиваем их на каждом старте:
-    # правка ноды доезжает до подов без пересборки образа.
-    if [ -d "$dir/.git" ]; then
-        echo "Updating $name ($ref)..."
-        git -C "$dir" fetch --depth 1 origin "$ref"
-        git -C "$dir" reset --hard FETCH_HEAD
-    else
-        echo "Cloning $name ($ref)..."
+    # Подтягиваем на каждом старте: правка своей ноды доезжает до подов без
+    # пересборки образа, а чужая остаётся на том коммите, который указан в ref.
+    #
+    # Единый путь init+fetch вместо развилки clone/fetch: `clone --branch` берёт
+    # только ветку или тег, а чужие ноды мы пиним коммитом (у KJNodes тегов нет
+    # вообще). GitHub отдаёт произвольный коммит по fetch, так что --depth 1
+    # сохраняется.
+    if [ ! -d "$dir/.git" ]; then
+        echo "Initializing $name..."
         rm -rf "$dir"
-        git clone --depth 1 --branch "$ref" "$repo" "$dir"
+        git init -q "$dir"
+        git -C "$dir" remote add origin "$repo"
     fi
+    echo "Fetching $name ($ref)..."
+    git -C "$dir" fetch --depth 1 origin "$ref"
+    git -C "$dir" reset --hard FETCH_HEAD
 
     if [ -f "$dir/requirements.txt" ]; then
         python3 -m pip install --no-cache-dir -r "$dir/requirements.txt"
